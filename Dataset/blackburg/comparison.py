@@ -39,18 +39,23 @@ class GCNWithAttention(torch.nn.Module):
         self.attn2 = GATConv(hidden_channels * 2, out_channels, heads=2, concat=False)
 
     def forward(self, x, edge_index_model):
+        src, dest = edge_index_model
+        elevation_src = x[src, 2]
+        elevation_dest = x[dest, 2]
+        valid_edges = elevation_dest < elevation_src
+        edge_index_filtered = edge_index_model[:, valid_edges]
         # GCN layers
 
-        x = self.conv1(x, edge_index_model)
+        x = self.conv1(x, edge_index_filtered)
         # print("########################")
         x = F.relu(x)
-        x = self.conv2(x, edge_index_model)
+        x = self.conv2(x, edge_index_filtered)
         x = F.relu(x)
 
         # Attention layers
-        x = self.attn1(x, edge_index_model)
+        x = self.attn1(x, edge_index_filtered)
         x = F.relu(x)
-        x = self.attn2(x, edge_index_model)
+        x = self.attn2(x, edge_index_filtered)
 
         return F.log_softmax(x, dim=1)
 
